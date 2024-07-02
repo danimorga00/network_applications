@@ -15,17 +15,12 @@ using namespace ns3;
 NS_LOG_COMPONENT_DEFINE ("DualApStaSpectrumChannel");
 
 void RunSimulation(bool useSpectrum, std::string modelName) {
-    // Enable logging for useful components
-    //LogComponentEnable("UdpEchoClientApplication", LOG_LEVEL_INFO);
-    //LogComponentEnable("UdpEchoServerApplication", LOG_LEVEL_INFO);
-
-    // Create nodes for APs and STAs
+    
     NodeContainer wifiStaNodes;
     wifiStaNodes.Create (2);
     NodeContainer wifiApNodes;
     wifiApNodes.Create (2);
 
-    // Configure the Wi-Fi channel and PHY layer
     Ptr<SpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel> ();
     Ptr<FriisPropagationLossModel> lossModel = CreateObject<FriisPropagationLossModel>();
     lossModel->SetFrequency(5.180e6);
@@ -51,15 +46,12 @@ void RunSimulation(bool useSpectrum, std::string modelName) {
     //yansPhy.Set("TxPowerStart", DoubleValue(1)); // dBm (1.26 mW)
     //yansPhy.Set("TxPowerEnd", DoubleValue(1));
 
-    // Configure Wi-Fi standard and setup
     WifiHelper wifi;
-    //wifi.SetStandard(WIFI_PHY_STANDARD_80211n_5GHZ);
     wifi.SetRemoteStationManager ("ns3::MinstrelHtWifiManager");
 
     WifiMacHelper mac;
     Ssid ssid = Ssid ("ns3-ssid");
 
-    // Configure STA devices
     mac.SetType ("ns3::StaWifiMac",
                 "Ssid", SsidValue (ssid),
                 "ActiveProbing", BooleanValue (false));
@@ -72,7 +64,6 @@ void RunSimulation(bool useSpectrum, std::string modelName) {
         staDevices.Add(wifi.Install (yansPhy, mac, wifiStaNodes.Get(1)));
     }
 
-    // Configure AP devices
     mac.SetType ("ns3::ApWifiMac",
                 "Ssid", SsidValue (ssid));
     NetDeviceContainer apDevices;
@@ -84,36 +75,14 @@ void RunSimulation(bool useSpectrum, std::string modelName) {
         apDevices.Add(wifi.Install (yansPhy, mac, wifiApNodes.Get(1)));
     }
 
-    // Install the Internet stack
     InternetStackHelper stack;
     stack.Install (wifiStaNodes);
     stack.Install (wifiApNodes);
 
-    // Assign IP addresses
     Ipv4AddressHelper address;
     address.SetBase ("10.10.1.0", "255.255.255.0");
     Ipv4InterfaceContainer apInterfaces = address.Assign (apDevices);
     Ipv4InterfaceContainer staInterfaces = address.Assign (staDevices);
-
-    // Set up mobility
-    /*
-    MobilityHelper mobilityAP;
-    mobilityAP.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                    "MinX", DoubleValue (0.0),
-                                    "MinY", DoubleValue (0.0),
-                                    "DeltaX", DoubleValue (10.0),
-                                    "DeltaY", DoubleValue (0.0),
-                                    "GridWidth", UintegerValue (3),
-                                    "LayoutType", StringValue ("RowFirst"));
-
-    mobilityAP.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-    mobilityAP.Install (wifiApNodes);
-
-    MobilityHelper mobilitySTA;
-    mobilitySTA.SetMobilityModel("ns3::RandomWalk2dMobilityModel", "Bounds", RectangleValue(Rectangle(-10, 10, -10, 10)));
-    mobilitySTA.Install(wifiStaNodes);
-*/
-// Mobility configuration
 
     MobilityHelper mobility;
     Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
@@ -129,18 +98,15 @@ void RunSimulation(bool useSpectrum, std::string modelName) {
     mobility.Install (wifiStaNodes);
 
     UdpEchoClientHelper echoClient1 (apInterfaces.GetAddress (0), 9);
-    //echoClient1.SetAttribute ("MaxPackets", UintegerValue (1000));
     echoClient1.SetAttribute ("Interval", TimeValue (MilliSeconds (5)));
     echoClient1.SetAttribute ("PacketSize", UintegerValue (10000));
     ApplicationContainer clientApps1 = echoClient1.Install (wifiStaNodes.Get (0));
 
     UdpEchoClientHelper echoClient2 (apInterfaces.GetAddress (1), 9);
-    //echoClient2.SetAttribute ("MaxPackets", UintegerValue (1000));
     echoClient2.SetAttribute ("Interval", TimeValue (MilliSeconds (13)));
     echoClient2.SetAttribute ("PacketSize", UintegerValue (10000));
     ApplicationContainer clientApps2 = echoClient2.Install (wifiStaNodes.Get (1));
 
-    // Enable Flow Monitor
     FlowMonitorHelper flowmon;
     Ptr<FlowMonitor> monitor = flowmon.InstallAll();
 
@@ -151,7 +117,6 @@ void RunSimulation(bool useSpectrum, std::string modelName) {
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<microseconds>(stop - start);
 
-    // Print Flow Monitor statistics
     monitor->CheckForLostPackets ();
     Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
     std::map<FlowId, FlowMonitor::FlowStats> stats = monitor->GetFlowStats ();
@@ -169,7 +134,6 @@ void RunSimulation(bool useSpectrum, std::string modelName) {
         }
     std::cout << "Simulation time: " << duration.count() << " microseconds\n\n " << std::endl;
 
-    // Clean up
     Simulator::Destroy ();
 }
 
